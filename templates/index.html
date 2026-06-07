@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockVision AI — 2-Week Price Predictor</title>
+  <meta name="description" content="AI-powered stock price prediction dashboard. Enter any company name to get a 2-week forecast with interactive charts." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js + Annotation Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     NAVBAR
+══════════════════════════════════════ -->
+<nav>
+  <div class="nav-brand">
+    <div class="nav-logo">📈</div>
+    Stock<span class="dot">Vision</span> AI
+  </div>
+  <span class="nav-badge">⚡ 2-Week Forecast</span>
+</nav>
+
+<!-- ══════════════════════════════════════
+     MAIN CONTENT
+══════════════════════════════════════ -->
+<main>
+
+  <!-- Hero Search Section -->
+  <section class="hero">
+    <h1>Predict Stock Prices<br>with AI Precision</h1>
+    <p>Enter any company name or ticker — get a 2-week forecast powered by machine learning</p>
+
+    <!-- Search Box -->
+    <div class="search-wrapper">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input
+          id="company-input"
+          type="text"
+          placeholder="e.g. Apple, TSLA, Reliance, INFY…"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="predict-btn" onclick="runPrediction()">Predict →</button>
+      </div>
+      <!-- Autocomplete Dropdown -->
+      <div id="autocomplete-list"></div>
+    </div>
+
+    <!-- Quick-pick Chips -->
+    <div class="chip-row" id="quick-chips">
+      <span class="chip" onclick="quickSearch('AAPL')">🍎 Apple</span>
+      <span class="chip" onclick="quickSearch('TSLA')">⚡ Tesla</span>
+      <span class="chip" onclick="quickSearch('MSFT')">🪟 Microsoft</span>
+      <span class="chip" onclick="quickSearch('NVDA')">🟢 NVIDIA</span>
+      <span class="chip" onclick="quickSearch('GOOGL')">🔵 Google</span>
+      <span class="chip" onclick="quickSearch('AMZN')">📦 Amazon</span>
+      <span class="chip" onclick="quickSearch('TCS.NS')">🇮🇳 TCS</span>
+      <span class="chip" onclick="quickSearch('RELIANCE.NS')">🇮🇳 Reliance</span>
+    </div>
+  </section>
+
+  <!-- Error Banner -->
+  <div id="error-msg"></div>
+
+  <!-- Loading Spinner -->
+  <div class="spinner-wrap" id="spinner">
+    <div class="spinner"></div>
+    <div class="spinner-text">Fetching data &amp; running AI forecast…</div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       DASHBOARD (hidden until prediction)
+  ══════════════════════════════════════ -->
+  <section id="dashboard">
+
+    <!-- Company Header -->
+    <div class="company-header">
+      <div class="company-title">
+        <h2 id="d-company-name">—</h2>
+        <div class="company-meta">
+          <span class="meta-pill" id="d-ticker">—</span>
+          <span class="meta-pill" id="d-sector">—</span>
+          <span class="meta-pill" id="d-country">—</span>
+          <span class="meta-pill" id="d-currency">—</span>
+        </div>
+      </div>
+      <div class="price-block">
+        <div class="current-price-val" id="d-price">—</div>
+        <div><span class="price-change-badge" id="d-change-badge">—</span></div>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card" style="--kpi-glow: rgba(79,124,255,0.2)">
+        <div class="kpi-label">Current Price</div>
+        <div class="kpi-value" id="k-current">—</div>
+        <div class="kpi-sub">Live market price</div>
+        <span class="kpi-icon">💹</span>
+      </div>
+      <div class="kpi-card" style="--kpi-glow: rgba(0,229,160,0.2)">
+        <div class="kpi-label">Predicted Price (14d)</div>
+        <div class="kpi-value" id="k-pred-end">—</div>
+        <div class="kpi-sub" id="k-pred-pct">End of forecast</div>
+        <span class="kpi-icon">🎯</span>
+      </div>
+      <div class="kpi-card" style="--kpi-glow: rgba(162,89,255,0.2)">
+        <div class="kpi-label">Forecast High</div>
+        <div class="kpi-value" id="k-pred-high">—</div>
+        <div class="kpi-sub">Upper confidence band</div>
+        <span class="kpi-icon">🚀</span>
+      </div>
+      <div class="kpi-card" style="--kpi-glow: rgba(255,79,109,0.2)">
+        <div class="kpi-label">Forecast Low</div>
+        <div class="kpi-value" id="k-pred-low">—</div>
+        <div class="kpi-sub">Lower confidence band</div>
+        <span class="kpi-icon">🛡️</span>
+      </div>
+    </div>
+
+    <!-- Main Price Chart -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Price History &amp; 2-Week AI Forecast</div>
+        <div class="chart-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#4f7cff"></div>
+            Actual Price
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#a259ff"></div>
+            AI Prediction
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:rgba(162,89,255,0.25); border:1px dashed #a259ff"></div>
+            Confidence Band
+          </div>
+        </div>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="main-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Market Stats + Forecast Summary -->
+    <div class="detail-grid">
+      <div class="detail-card">
+        <h3>📊 Market Stats</h3>
+        <div class="stat-row"><span class="stat-label">52W High</span>   <span class="stat-value" id="s-52h">—</span></div>
+        <div class="stat-row"><span class="stat-label">52W Low</span>    <span class="stat-value" id="s-52l">—</span></div>
+        <div class="stat-row"><span class="stat-label">Market Cap</span> <span class="stat-value" id="s-mcap">—</span></div>
+        <div class="stat-row"><span class="stat-label">P/E Ratio</span>  <span class="stat-value" id="s-pe">—</span></div>
+        <div class="stat-row"><span class="stat-label">Avg Volume</span> <span class="stat-value" id="s-vol">—</span></div>
+      </div>
+      <div class="detail-card">
+        <h3>🤖 Forecast Summary</h3>
+        <div class="stat-row"><span class="stat-label">Horizon</span>       <span class="stat-value">14 Business Days</span></div>
+        <div class="stat-row"><span class="stat-label">Model</span>         <span class="stat-value">Prophet (Meta AI)</span></div>
+        <div class="stat-row"><span class="stat-label">Training Data</span> <span class="stat-value">2 Years</span></div>
+        <div class="stat-row"><span class="stat-label">Confidence</span>    <span class="stat-value">80% Interval</span></div>
+        <div class="stat-row"><span class="stat-label">Industry</span>      <span class="stat-value" id="s-industry">—</span></div>
+      </div>
+    </div>
+
+    <!-- 14-Day Forecast Table -->
+    <div class="forecast-table-wrap">
+      <h3>📅 14-Day Forecast Breakdown</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Predicted Price</th>
+            <th>Low (80% CI)</th>
+            <th>High (80% CI)</th>
+            <th>vs Current</th>
+          </tr>
+        </thead>
+        <tbody id="forecast-tbody"></tbody>
+      </table>
+    </div>
+
+  </section><!-- /#dashboard -->
+
+</main>
+
+<!-- App JavaScript (loaded last so DOM is ready) -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>
+</html>
